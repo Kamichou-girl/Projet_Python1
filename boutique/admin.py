@@ -6,8 +6,6 @@ from .models import (
     Panier,
     ArticlePanier,
     Commande,
-    ArticleCommande,
-    AdresseLivraison,
 )
 
 @admin.register(Categorie)
@@ -31,20 +29,24 @@ class ProduitAdmin(admin.ModelAdmin):
 
 @admin.register(Panier)
 class PanierAdmin(admin.ModelAdmin):
-    list_display = ('utilisateur', 'date_creation')
+    list_display = ('utilisateur', 'date_creation', 'total')
     search_fields = ('utilisateur__username',)
+
+    def total(self, obj):
+        return obj.get_total()
+    total.short_description = "Total du Panier"
 
 
 @admin.register(ArticlePanier)
 class ArticlePanierAdmin(admin.ModelAdmin):
-    list_display = ('panier', 'produit', 'quantite')
+    list_display = ('panier', 'produit', 'quantite', 'total_price')
     search_fields = ('produit__nom',)
     list_filter = ('panier__date_creation',)
 
+    def total_price(self, obj):
+        return obj.get_total_price()
+    total_price.short_description = "Total Article"
 
-class ArticleCommandeInline(admin.TabularInline):
-    model = ArticleCommande
-    extra = 1
 
 
 @admin.register(Commande)
@@ -52,16 +54,3 @@ class CommandeAdmin(admin.ModelAdmin):
     list_display = ('id', 'utilisateur', 'statut', 'total', 'date_commande')
     list_filter = ('statut', 'date_commande')
     search_fields = ('utilisateur__username',)
-    inlines = [ArticleCommandeInline]
-
-
-@admin.register(ArticleCommande)
-class ArticleCommandeAdmin(admin.ModelAdmin):
-    list_display = ('commande', 'produit', 'quantite', 'prix_unitaire')
-    search_fields = ('produit__nom',)
-
-
-@admin.register(AdresseLivraison)
-class AdresseLivraisonAdmin(admin.ModelAdmin):
-    list_display = ('utilisateur', 'ville', 'pays', 'code_postal')
-    search_fields = ('utilisateur__username', 'ville', 'pays')

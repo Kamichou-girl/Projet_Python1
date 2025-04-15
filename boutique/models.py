@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
 
 class Categorie(models.Model):
     nom = models.CharField(max_length=100, unique=True)
@@ -33,9 +36,16 @@ class ImageProduit(models.Model):
 class Panier(models.Model):
     utilisateur = models.ForeignKey(User, on_delete=models.CASCADE)
     date_creation = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"Panier de {self.utilisateur.username}"
+
+    def get_total(self):
+        """
+        Calcule le total du panier en sommant le total de chaque article.
+        """
+        return sum(item.get_total_price() for item in self.articles.all())
 
 
 class ArticlePanier(models.Model):
@@ -45,6 +55,12 @@ class ArticlePanier(models.Model):
 
     def __str__(self):
         return f"{self.quantite} x {self.produit.nom}"
+
+    def get_total_price(self):
+        """
+        Retourne le total (prix x quantité) pour cet article.
+        """
+        return self.produit.prix * self.quantite
 
 
 class Commande(models.Model):
@@ -62,23 +78,14 @@ class Commande(models.Model):
     def __str__(self):
         return f"Commande #{self.id} - {self.utilisateur.username}"
 
-
-class ArticleCommande(models.Model):
-    commande = models.ForeignKey(Commande, on_delete=models.CASCADE, related_name='articles')
-    produit = models.ForeignKey(Produit, on_delete=models.CASCADE)
-    quantite = models.PositiveIntegerField()
-    prix_unitaire = models.DecimalField(max_digits=8, decimal_places=2)
-
-    def __str__(self):
-        return f"{self.quantite} x {self.produit.nom}"
+    def update_total(self):
+        """
+        Met à jour le total de la commande en se basant sur ses articles.
+        """
+        self.total = sum(article.get_total_price() for article in self.articles.all())
+        self.save()
 
 
-class AdresseLivraison(models.Model):
-    utilisateur = models.ForeignKey(User, on_delete=models.CASCADE)
-    adresse = models.CharField(max_length=255)
-    ville = models.CharField(max_length=100)
-    code_postal = models.CharField(max_length=20)
-    pays = models.CharField(max_length=100)
-
-    def __str__(self):
-        return f"{self.utilisateur.username} - {self.ville}"
+    def produit_detail(request, id):
+           produit = Produit.objects.get(id=id)
+           return render(request, 'boutique/produit_detail.html', {'produit': produit})
